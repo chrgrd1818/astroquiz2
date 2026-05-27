@@ -1,0 +1,46 @@
+---
+// Check if user is authenticated (from middleware context)
+const user = Astro.locals.user ?? null;
+---
+
+<nav class="border-b bg-white shadow-sm">
+  <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+    <div class="text-2xl font-bold text-gray-900">
+      <a href="/">Astro SSR</a>
+    </div>
+    <ul class="flex gap-6 items-center">
+      <li>
+        <a href="/" class="text-gray-700 hover:text-gray-900">Home</a>
+      </li>
+      {user ? (
+        
+          <li>
+            <a href="/account" class="text-gray-700 hover:text-gray-900">
+              Account
+            </a>
+          </li>
+          <li>
+            <form method="POST" action="/api/auth/logout" style="display: inline;">
+              <button
+                type="submit"
+                class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+              >
+                Logout
+              </button>
+            </form>
+          </li>
+        
+      ) : (
+            <li>
+            
+            <a href="/auth"
+              class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+            >
+              Login
+            </a>
+          </li>
+       
+      )}
+    </ul>
+  </div>
+</nav>
