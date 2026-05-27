@@ -1,5 +1,5 @@
-import { getSupabaseClientFromContext } from '../../lib/supabase.js';
-import { loginSchema } from '../../schemas/authSchema.js';
+import { getSupabaseClientFromContext } from '../../../lib/supabase.js';
+import { loginSchema } from '../../../schemas/authSchema.js';
 
 export async function POST(context) {
   try {

@@ -1,4 +1,4 @@
-import { getSupabaseClientFromContext } from '../../lib/supabase.js';
+import { getSupabaseClientFromContext } from '../../../lib/supabase.js';
 
 export async function POST(context) {
   try {
