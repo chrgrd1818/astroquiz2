@@ -41,7 +41,8 @@ if (Astro.request.method === 'POST') {
       } catch (parseErr) {
         console.error('❌ Failed to parse JSON:', parseErr);
         error = `API Error: ${responseText.substring(0, 100)}`;
-        return;
+        return new Response(JSON.stringify({ error }), { status: 500, headers: { 'Content-Type': 'application/json' }});
+
       }
 
       if (response.ok) {
