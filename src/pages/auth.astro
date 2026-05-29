@@ -23,39 +23,38 @@ if (Astro.request.method === 'POST') {
   console.log('Form data:', { action, email, hasPassword: !!password });
 
   if (action === 'login') {
-    console.log('🔑 Login action detected');
+    const loginUrl = new URL('/api/auth/login', Astro.request.url);
+
     try {
-      console.log('🌐 Calling /api/auth/login...');
-      const response = await fetch(`/api/auth/login`, {
+      const response = await fetch(loginUrl.toString(), {
         method: 'POST',
         body: formData,
+        headers: { 'x-internal-request': '1' }
       });
-      console.log('📡 Response status:', response.status);
-      
-      const responseText = await response.text();
-      console.log('📝 Raw response:', responseText.substring(0, 300));
-      
-      let data;
+
+      const raw = await response.text();
+
+      let data = null;
       try {
-        data = JSON.parse(responseText);
+        data = JSON.parse(raw);
       } catch (parseErr) {
-        console.error('❌ Failed to parse JSON:', parseErr);
-        error = `API Error: ${responseText.substring(0, 100)}`;
-    
+        console.error('Failed to parse JSON:', parseErr);
+        error = `API Error: ${raw.substring(0, 300)}`;
       }
 
-      if (response.ok) {
-        message = data.message;
+      if (response.ok && data) {
+        message = data.message || 'Logged in';
         return Astro.redirect('/account');
-      } else {
-        error = data.error || 'Login failed';
-        console.error('❌ Login failed:', error);
+      } else if (!response.ok) {
+        error = data?.error || error || `Login failed: ${response.status}`;
+        console.error('Login failed:', error);
       }
     } catch (e) {
-      const err = e instanceof Error ? e.message : String(e);
-      console.error('💥 Fetch error:', err);
-      error = `Fetch error: ${err}`;
+      const errMsg = e instanceof Error ? e.message : String(e);
+      console.error('Fetch error:', errMsg);
+      error = `Fetch error: ${errMsg}`;
     }
+    
   } else if (action === 'register') {
     console.log('📝 Register action detected');
     try {

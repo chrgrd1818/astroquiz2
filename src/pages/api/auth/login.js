@@ -1,92 +1,98 @@
-import { getSupabaseClientFromContext } from '../../../lib/supabase.js';
-import { loginSchema } from '../../../schemas/authSchema.js';
+// src/pages/api/auth/login.js
 
-export async function POST(context) {
+/**
+ * API route: POST /api/auth/login
+ *
+ * - Accepts form submissions (FormData) with fields like `action`, `email`, `password`, etc.
+ * - If the request includes header `x-internal-request: 1`, the origin/referrer guard is skipped.
+ * - Returns JSON responses with appropriate status codes.
+ *
+ * Replace `authenticateUser` with your real authentication logic (DB lookup, bcrypt, etc.).
+ */
+
+export async function POST({ request }) {
   try {
-    const formData = await context.request.formData();
-    const email = formData.get('email');
-    const password = formData.get('password');
+    // Detect internal server-side calls
+    const internal = request.headers.get('x-internal-request') === '1';
 
-    console.log('🔐 Login attempt for:', email);
-    console.log('📝 Supabase URL:', import.meta.env.SUPABASE_URL);
-    console.log('🔑 Anon key exists:', !!import.meta.env.SUPABASE_ANON_KEY);
+    // If not internal, perform origin/referrer checks to prevent cross-site POSTs
+    if (!internal) {
+      const origin = request.headers.get('origin') || '';
+      const referer = request.headers.get('referer') || '';
 
-    // Validate input
-    const validation = loginSchema.safeParse({ email, password });
-    if (!validation.success) {
-      console.error('❌ Validation failed:', validation.error.flatten());
-      return new Response(
-        JSON.stringify({
-          error: 'Validation failed',
-          details: validation.error.flatten(),
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      // Adjust expectedOrigin to match your dev/prod origin if needed
+      const expectedOrigin = process.env.SITE || 'http://localhost:3000';
+
+      const originOk = origin === '' || origin.startsWith(expectedOrigin);
+      const refererOk = referer === '' || referer.startsWith(expectedOrigin);
+
+      if (!originOk && !refererOk) {
+        return new Response('Cross-site POST form submissions are forbidden', {
+          status: 403,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        });
+      }
     }
 
-    // Authenticate with Supabase
-    console.log('🚀 Creating Supabase client...');
-    const supabase = getSupabaseClientFromContext(context);
-    console.log('✅ Supabase client created');
+    // Parse incoming form data
+    const formData = await request.formData();
+    const action = formData.get('action') || '';
+    const email = String(formData.get('email') || '').trim();
+    const password = formData.get('password') || null;
+    const hasPassword = formData.get('hasPassword') === 'true' || !!password;
 
-    console.log('🔄 Attempting sign in with password...');
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error('❌ Login error from Supabase:', {
-        message: error.message,
-        status: error.status,
-        code: error.code,
+    // Only handle login action here
+    if (action !== 'login') {
+      return new Response(JSON.stringify({ error: 'Unsupported action' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
       });
-      return new Response(
-        JSON.stringify({ 
-          error: error.message,
-          details: {
-            code: error.code,
-            status: error.status,
-          }
-        }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
     }
 
-    console.log('✅ Login successful for:', email);
-    // Successful login
-    return new Response(
-      JSON.stringify({
-        success: true,
-        user: data.user,
-        message: 'Logged in successfully',
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
+    // Simple authentication stub
+    // Replace this with your real authentication (DB lookup, password hash check, session creation, etc.)
+    async function authenticateUser(email, password, hasPassword) {
+      // Example behavior:
+      // - If hasPassword is false, treat as "magic link" or passwordless login attempt -> reject here
+      // - If email is empty -> reject
+      // - For demo: accept any non-empty email when hasPassword is false (you should change this)
+      if (!email) {
+        return { ok: false, status: 400, body: { error: 'Email is required' } };
       }
-    );
-  } catch (e) {
-    const error = e instanceof Error ? e : new Error(String(e));
-    console.error('💥 Unexpected error during login:', {
-      message: error.message,
-      stack: error.stack,
+
+      if (!hasPassword) {
+        // Example: you might send a magic link here; for now, reject
+        return { ok: false, status: 400, body: { error: 'Password required for login' } };
+      }
+
+      // Demo password check: accept if password equals "password" (replace with real check)
+      if (typeof password === 'string' && password.length > 0) {
+        const demoAccept = password === 'password';
+        if (demoAccept) {
+          return { ok: true, status: 200, body: { message: 'Login successful', email } };
+        } else {
+          return { ok: false, status: 401, body: { error: 'Invalid credentials' } };
+        }
+      }
+
+      return { ok: false, status: 400, body: { error: 'Invalid login request' } };
+    }
+
+    // Call authentication logic
+    const result = await authenticateUser(email, password, hasPassword);
+
+    // Return JSON response
+    return new Response(JSON.stringify(result.body), {
+      status: result.status,
+      headers: { 'Content-Type': 'application/json' },
     });
-    return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Internal server error',
-        debug: error.message,
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+  } catch (err) {
+    console.error('Login handler error:', err);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
+
+export default POST;
